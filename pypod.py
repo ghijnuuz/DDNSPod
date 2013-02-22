@@ -1,9 +1,17 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-import httplib, urllib
 import socket
 import time
+import os
+import sys
+import logging
+try:    # Python 3
+    import http.client as httpclient
+    import urllib.parse as urllibparse
+except: # Python 2
+    import httplib as httpclient
+    import urllib as urllibparse
 
 params = dict(
     login_email="email", # replace with your email
@@ -16,16 +24,21 @@ params = dict(
 )
 current_ip = None
 
+logfile = 'log.txt'
+def initlog():
+    logpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), logfile)
+    logging.basicConfig(filename = logpath, format = '%(asctime)s - %(levelname)s: %(message)s', level = 'INFO')
+
 def ddns(ip):
     params.update(dict(value=ip))
     headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/json"}
-    conn = httplib.HTTPSConnection("dnsapi.cn")
-    conn.request("POST", "/Record.Ddns", urllib.urlencode(params), headers)
+    conn = httpclient.HTTPSConnection("dnsapi.cn")
+    conn.request("POST", "/Record.Ddns", urllibparse.urlencode(params), headers)
     
     response = conn.getresponse()
-    print response.status, response.reason
+    logging.info("Status: " + str(response.status) + ' ' + response.reason)
     data = response.read()
-    print data
+    logging.info("Response: " + data)
     conn.close()
     return response.status == 200
 
@@ -36,14 +49,15 @@ def getip():
     return ip
 
 if __name__ == '__main__':
+    initlog()
     while True:
         try:
             ip = getip()
-            print ip
+            logging.info("IP: " + ip)
             if current_ip != ip:
                 if ddns(ip):
                     current_ip = ip
-        except Exception, e:
-            print e
+        except Exception as e:
+            logging.error(e)
             pass
         time.sleep(30)
